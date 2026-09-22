@@ -608,12 +608,19 @@ html, body {
   font-family: var(--font-heading);
   font-size: 2.3rem;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.15;
   background: var(--color-gold-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.8));
   letter-spacing: 1.5px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.bride-name {
+  font-size: 2.05rem;
 }
 
 .parent-line {
@@ -1082,6 +1089,21 @@ html, body {
   margin-bottom: 24px;
 }
 
+/* Single big-column Venues button (Save Date removed) */
+.action-buttons-grid.single-btn {
+  grid-template-columns: 1fr;
+  max-width: 350px;
+}
+
+.primary-gold-btn.full-width-btn {
+  width: 100%;
+  padding: 18px 24px;
+  font-size: 1rem;
+  letter-spacing: 2.5px;
+  border-radius: 18px;
+  flex-direction: row;
+}
+
 .primary-gold-btn {
   background: var(--color-gold-gradient);
   color: #0A0A0C;
@@ -1446,6 +1468,34 @@ html, body {
   background: rgba(230, 140, 200, 0.18);
   color: #f7c7ea;
   border: 1px solid rgba(230, 140, 200, 0.4);
+}
+
+.venue-tag.mehndi {
+  background: rgba(120, 255, 170, 0.15);
+  color: #c9ffdd;
+  border: 1px solid rgba(120, 255, 170, 0.4);
+}
+
+/* Inline map link inside timeline event cards (Mehndi / Haldi) */
+.event-map-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--color-gold-light);
+  background: rgba(229, 193, 88, 0.12);
+  border: 1px solid rgba(229, 193, 88, 0.4);
+  padding: 5px 12px;
+  border-radius: 20px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.event-map-link:hover {
+  background: var(--color-gold);
+  color: #0A0A0C;
 }
 
 .venue-title-row h4 {

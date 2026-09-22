@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ROYAL CINEMATIC DIGITAL WEDDING INVITATION - MAAZ & RUMESHA
+   ROYAL CINEMATIC DIGITAL WEDDING INVITATION - RUMESHABANU & MAAZ
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mapModal = document.getElementById('mapModal');
   const openMapBtn = document.getElementById('openMapBtn');
   const closeMapModal = document.getElementById('closeMapModal');
-  const addToCalendarBtn = document.getElementById('addToCalendarBtn');
 
   // Application State (Door 3: Moroccan Emerald default)
   let currentDoorId = '3';
@@ -514,29 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
-
-  // --- Add to Google Calendar ---
-  if (addToCalendarBtn) {
-    addToCalendarBtn.addEventListener('click', () => {
-      const title = encodeURIComponent('Royal Wedding of Maaz Saiyed & Rumesha Saiyed');
-      const details = encodeURIComponent(
-        'In the name of Allah, the Most Gracious, the Most Merciful.\n' +
-        'You are cordially invited to celebrate the royal wedding of Maaz Saiyed & Rumesha Saiyed.\n\n' +
-        'WEDDING CEREMONIES:\n' +
-        '1. MEHNDI: Friday, 4th Dec 2026, 12:00 PM at Home\n' +
-        '2. HALDI: Friday, 4th Dec 2026 (Haldi 6:00 PM | Dinner 8:00 PM) at Home\n' +
-        '3. NIKAH: Saturday, 5th Dec 2026 (After Namaz-E-Maghrib) at Mohammadi Masjid, Rander, Surat\n' +
-        '4. BARAAT & DINNER: Saturday, 5th Dec 2026, 8:00 PM Onwards at Royal Party Plot, Rander, Surat\n' +
-        '5. WALIMA: Sunday, 6th Dec 2026 at Chhela Sheth Party Plot, Tandalja, Vadodara'
-      );
-      const loc = encodeURIComponent('Mohammadi Masjid & Royal Party Plot, Rander, Surat');
-      const dates = '20261205T123000Z/20261205T183000Z'; // Saturday 5th Dec
-
-      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${loc}&dates=${dates}`;
-
-      window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
-    });
-  }
 
   // Register Service Worker for rapid repeat loading
   if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
