@@ -620,7 +620,7 @@ html, body {
 }
 
 .bride-name {
-  font-size: 2.05rem;
+  font-size: 1.95rem;
 }
 
 .parent-line {
@@ -1554,8 +1554,12 @@ html, body {
     top: 12px;
   }
 
-  .groom-name, .bride-name {
+  .groom-name {
     font-size: 2.1rem;
+  }
+
+  .bride-name {
+    font-size: 1.75rem;
   }
 }
 
