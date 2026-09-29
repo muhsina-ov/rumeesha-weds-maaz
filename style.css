@@ -1476,14 +1476,22 @@ html, body {
   border: 1px solid rgba(120, 255, 170, 0.4);
 }
 
+.venue-tag.haldi {
+  background: rgba(255, 205, 60, 0.18);
+  color: #ffe699;
+  border: 1px solid rgba(255, 205, 60, 0.45);
+}
+
 /* Inline map link inside timeline event cards (Mehndi / Haldi) */
 .event-map-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-top: 6px;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: var(--color-gold-light);
   background: rgba(229, 193, 88, 0.12);
   border: 1px solid rgba(229, 193, 88, 0.4);
