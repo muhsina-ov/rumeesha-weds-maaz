@@ -20,6 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const audioIconOff = document.getElementById('audioIconOff');
   const replayBtn = document.getElementById('replayBtn');
   const bgmAudio = document.getElementById('bgmAudio');
+
+  // Configure continuous loop for BGM
+  if (bgmAudio) {
+    bgmAudio.loop = true;
+    bgmAudio.addEventListener('ended', () => {
+      bgmAudio.currentTime = 0;
+      bgmAudio.play().catch(e => console.log('BGM loop auto-restart note:', e));
+    });
+  }
   
   // Modals
   const doorModal = document.getElementById('doorModal');
@@ -364,8 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
     isPlaying = true;
     initAudioContext();
 
-    // Start background music seamlessly
+    // Start background music seamlessly in continuous loop
     if (bgmAudio) {
+      bgmAudio.loop = true;
       bgmAudio.muted = isAudioMuted;
       const playBgm = bgmAudio.play();
       if (playBgm !== undefined) {
