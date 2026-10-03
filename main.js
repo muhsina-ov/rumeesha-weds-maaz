@@ -43,8 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let isPlaying = false;
   let hasOpened = false;
   let audioCtx = null;
+  let isMobileAudioUnlocked = false;
 
-  // --- Audio Context Helper ---
+  // --- Audio Context & Mobile Unlock Helper ---
   function initAudioContext() {
     if (!audioCtx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -56,6 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
       audioCtx.resume();
     }
   }
+
+  function unlockMobileAudioEngine() {
+    initAudioContext();
+    if (!isMobileAudioUnlocked && bgmAudio) {
+      isMobileAudioUnlocked = true;
+      // Pre-load audio track inside user gesture for mobile WebKit & Blink
+      bgmAudio.load();
+    }
+  }
+
+  // Early unlock on first mobile touch or interaction anywhere
+  ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(evt => {
+    window.addEventListener(evt, unlockMobileAudioEngine, { once: true, passive: true });
+  });
 
   // --- 3D Depth Floating Sky Lanterns Engine ---
   function initFloatingLanterns() {
@@ -371,16 +386,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isPlaying || hasOpened) return;
     
     isPlaying = true;
-    initAudioContext();
+    unlockMobileAudioEngine();
 
     // Start background music seamlessly in continuous loop
     if (bgmAudio) {
       bgmAudio.loop = true;
       bgmAudio.muted = isAudioMuted;
+      bgmAudio.volume = 1.0;
       const playBgm = bgmAudio.play();
       if (playBgm !== undefined) {
-        playBgm.catch(err => {
-          console.warn('BGM play deferred or blocked:', err);
+        playBgm.then(() => {
+          console.log('BGM playback started smoothly on mobile');
+        }).catch(err => {
+          console.warn('BGM play deferred or blocked on mobile:', err);
+          // Fallback: resume audio on next user touch or interaction
+          const resumeAudioOnGesture = () => {
+            if (!isAudioMuted && bgmAudio && bgmAudio.paused) {
+              bgmAudio.play().catch(e => console.warn('BGM retry error:', e));
+            }
+          };
+          ['touchstart', 'touchend', 'click', 'scroll'].forEach(evt => {
+            window.addEventListener(evt, resumeAudioOnGesture, { once: true, passive: true });
+          });
         });
       }
     }
@@ -439,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function resetDoorState() {
     isPlaying = false;
     hasOpened = false;
+    doorOpeningTriggered = false;
     
     video.pause();
     video.currentTime = 0;
@@ -487,9 +515,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (doorModal) doorModal.classList.add('hidden');
   }
 
-  // Event Listeners for Opening & Replaying
-  if (tapOverlay) tapOverlay.addEventListener('click', openDoorInvitation);
-  if (replayBtn) replayBtn.addEventListener('click', resetDoorState);
+  // --- Event Listeners for Opening & Replaying (Mobile & Desktop Responsive) ---
+  let doorOpeningTriggered = false;
+
+  function triggerDoorOpen(e) {
+    if (isPlaying || hasOpened || doorOpeningTriggered) return;
+    
+    // Ignore clicks if clicking inside top controls or open modals
+    if (e && e.target && (e.target.closest('.top-controls') || e.target.closest('.modal-backdrop') || e.target.closest('.invitation-overlay'))) {
+      return;
+    }
+
+    doorOpeningTriggered = true;
+    unlockMobileAudioEngine();
+    openDoorInvitation();
+  }
+
+  [tapOverlay, mediaStage, invitationContainer].forEach(el => {
+    if (!el) return;
+    el.addEventListener('click', triggerDoorOpen);
+    el.addEventListener('touchend', triggerDoorOpen, { passive: true });
+  });
+
+  if (replayBtn) {
+    replayBtn.addEventListener('click', () => {
+      doorOpeningTriggered = false;
+      resetDoorState();
+    });
+  }
 
   // --- Door Modal Controls ---
   if (doorSelectBtn && doorModal) {
@@ -565,9 +618,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         if (audioIconOn) audioIconOn.classList.remove('hidden');
         if (audioIconOff) audioIconOff.classList.add('hidden');
-        initAudioContext();
-        if (bgmAudio && bgmAudio.paused && (isPlaying || hasOpened)) {
-          bgmAudio.play().catch(e => console.log('Audio resume error:', e));
+        unlockMobileAudioEngine();
+        if (bgmAudio) {
+          bgmAudio.muted = false;
+          if (bgmAudio.paused) {
+            bgmAudio.play().catch(e => console.log('Audio resume error:', e));
+          }
         }
       }
     });

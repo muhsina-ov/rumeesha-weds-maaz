@@ -49,8 +49,11 @@
   <!-- Ambient Desktop Background -->
   <div class="ambient-backdrop" id="ambientBackdrop"></div>
 
-  <!-- Background Music Audio Player -->
-  <audio id="bgmAudio" src="./assets/bgm.mp3" preload="auto" loop playsinline></audio>
+  <!-- Background Music Audio Player (Dual MP3 + M4A AAC format for 100% mobile compatibility) -->
+  <audio id="bgmAudio" preload="auto" loop playsinline webkit-playsinline x-webkit-airplay="allow">
+    <source src="./assets/bgm.mp3" type="audio/mpeg">
+    <source src="./assets/bgm.m4a" type="audio/mp4">
+  </audio>
 
   <!-- Background YouTube Music Player Container -->
   <div id="youtubePlayerContainer" class="youtube-player-container"></div>
