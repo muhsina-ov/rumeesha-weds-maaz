@@ -9,6 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const videoSource = document.getElementById('videoSource');
   const staticCanvas = document.getElementById('staticFrameCanvas');
   const canvasCtx = staticCanvas.getContext('2d');
+
+  // Video is purely visual door animation - lock to muted so mobile Safari grants 100% audio channel to bgmAudio
+  if (video) {
+    video.muted = true;
+    video.defaultMuted = true;
+    video.volume = 0;
+    video.playsInline = true;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+  }
   
   const tapOverlay = document.getElementById('tapOverlay');
   const invitationOverlay = document.getElementById('invitationOverlay');
@@ -604,30 +615,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Audio Mute Toggle ---
   if (audioToggleBtn) {
-    audioToggleBtn.addEventListener('click', () => {
-      isAudioMuted = !isAudioMuted;
-      video.muted = isAudioMuted;
-      if (bgmAudio) {
-        bgmAudio.muted = isAudioMuted;
-      }
-      toggleYouTubeAudioMute(isAudioMuted);
+    audioToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initAudioContext();
 
-      if (isAudioMuted) {
-        if (audioIconOn) audioIconOn.classList.add('hidden');
-        if (audioIconOff) audioIconOff.classList.remove('hidden');
+      if (!bgmAudio) return;
+
+      if (bgmAudio.paused) {
+        // Tapping audio button when silent forces audio playback!
+        isAudioMuted = false;
+        bgmAudio.muted = false;
+        bgmAudio.volume = 1.0;
+        bgmAudio.play().then(() => {
+          if (audioIconOn) audioIconOn.classList.remove('hidden');
+          if (audioIconOff) audioIconOff.classList.add('hidden');
+        }).catch(err => console.warn('Audio button play error:', err));
       } else {
-        if (audioIconOn) audioIconOn.classList.remove('hidden');
-        if (audioIconOff) audioIconOff.classList.add('hidden');
-        unlockMobileAudioEngine();
-        if (bgmAudio) {
-          bgmAudio.muted = false;
-          if (bgmAudio.paused) {
-            bgmAudio.play().catch(e => console.log('Audio resume error:', e));
-          }
+        isAudioMuted = !isAudioMuted;
+        bgmAudio.muted = isAudioMuted;
+        if (isAudioMuted) {
+          if (audioIconOn) audioIconOn.classList.add('hidden');
+          if (audioIconOff) audioIconOff.classList.remove('hidden');
+        } else {
+          if (audioIconOn) audioIconOn.classList.remove('hidden');
+          if (audioIconOff) audioIconOff.classList.add('hidden');
         }
       }
+      toggleYouTubeAudioMute(isAudioMuted);
     });
   }
+
+  // Persistent interaction listener: if invitation is open and audio is paused, any tap will resume it
+  function tryResumeBgmOnTouch() {
+    if (!bgmAudio || isAudioMuted) return;
+    if (bgmAudio.paused && (isPlaying || hasOpened)) {
+      bgmAudio.muted = false;
+      bgmAudio.volume = 1.0;
+      bgmAudio.play().then(() => {
+        if (audioIconOn) audioIconOn.classList.remove('hidden');
+        if (audioIconOff) audioIconOff.classList.add('hidden');
+      }).catch(() => {});
+    }
+  }
+
+  ['touchstart', 'touchend', 'click', 'scroll', 'pointerup'].forEach(evt => {
+    window.addEventListener(evt, tryResumeBgmOnTouch, { passive: true });
+  });
 
   // --- Map Modal Controls ---
   if (openMapBtn && mapModal) {
@@ -648,13 +681,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Register Service Worker for rapid repeat loading
-  if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(err => {
-        console.log('Service Worker skipped:', err);
-      });
+  // Unregister Service Workers and purge caches to prevent audio streaming blocks on mobile
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const reg of registrations) {
+        reg.unregister();
+      }
     });
+  }
+  if ('caches' in window) {
+    caches.keys().then(names => names.forEach(name => caches.delete(name)));
   }
 
   // Prefetch secondary doors & videos in background during idle time
