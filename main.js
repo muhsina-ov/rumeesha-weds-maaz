@@ -32,56 +32,148 @@ document.addEventListener('DOMContentLoaded', () => {
   const replayBtn = document.getElementById('replayBtn');
   const bgmAudio = document.getElementById('bgmAudio');
 
-  // Configure continuous loop for BGM
-  if (bgmAudio) {
-    bgmAudio.loop = true;
-    bgmAudio.addEventListener('ended', () => {
-      bgmAudio.currentTime = 0;
-      bgmAudio.play().catch(e => console.log('BGM loop auto-restart note:', e));
-    });
-  }
-  
-  // Modals
-  const doorModal = document.getElementById('doorModal');
-  const closeDoorModal = document.getElementById('closeDoorModal');
-  const mapModal = document.getElementById('mapModal');
-  const openMapBtn = document.getElementById('openMapBtn');
-  const closeMapModal = document.getElementById('closeMapModal');
-
   // Application State (Door 3: Moroccan Emerald default)
   let currentDoorId = '3';
   let isAudioMuted = false;
   let isPlaying = false;
   let hasOpened = false;
+  let bgmPlaying = false;
   let audioCtx = null;
-  let isMobileAudioUnlocked = false;
+  let bgmAudioBuffer = null;
+  let webAudioSourceNode = null;
+  let webAudioGainNode = null;
 
-  // --- Audio Context & Mobile Unlock Helper ---
+  // --- Audio Context Helper ---
   function initAudioContext() {
     if (!audioCtx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        audioCtx = new AudioContext();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
       }
     }
     if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
+      audioCtx.resume().catch(() => {});
     }
   }
 
-  function unlockMobileAudioEngine() {
+  // Preload Web Audio buffer in background as instant zero-latency mobile fallback
+  function preloadWebAudioBuffer() {
+    fetch('./assets/bgm.mp3')
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.arrayBuffer();
+      })
+      .then(data => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioCtx) audioCtx = new AudioContextClass();
+        return audioCtx.decodeAudioData(data);
+      })
+      .then(decoded => {
+        bgmAudioBuffer = decoded;
+      })
+      .catch(err => {
+        console.log('WebAudio buffer note:', err);
+      });
+  }
+  preloadWebAudioBuffer();
+
+  function playWebAudioFallback() {
+    if (bgmPlaying || isAudioMuted || !bgmAudioBuffer || !audioCtx) return;
+    try {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      if (webAudioSourceNode) {
+        try { webAudioSourceNode.stop(); } catch(e) {}
+      }
+      webAudioSourceNode = audioCtx.createBufferSource();
+      webAudioSourceNode.buffer = bgmAudioBuffer;
+      webAudioSourceNode.loop = true;
+
+      webAudioGainNode = audioCtx.createGain();
+      webAudioGainNode.gain.value = isAudioMuted ? 0 : 1.0;
+
+      webAudioSourceNode.connect(webAudioGainNode);
+      webAudioGainNode.connect(audioCtx.destination);
+      webAudioSourceNode.start(0);
+      bgmPlaying = true;
+      if (audioIconOn) audioIconOn.classList.remove('hidden');
+      if (audioIconOff) audioIconOff.classList.add('hidden');
+    } catch(err) {
+      console.warn('WebAudio fallback error:', err);
+    }
+  }
+
+  function startBgmPlayback() {
+    if (isAudioMuted) return;
     initAudioContext();
-    if (!isMobileAudioUnlocked && bgmAudio) {
-      isMobileAudioUnlocked = true;
-      // Pre-load audio track inside user gesture for mobile WebKit & Blink
-      bgmAudio.load();
+
+    if (bgmAudio) {
+      bgmAudio.loop = true;
+      bgmAudio.muted = false;
+      bgmAudio.volume = 1.0;
+      
+      const p = bgmAudio.play();
+      if (p !== undefined) {
+        p.then(() => {
+          bgmPlaying = true;
+          if (audioIconOn) audioIconOn.classList.remove('hidden');
+          if (audioIconOff) audioIconOff.classList.add('hidden');
+        }).catch(err => {
+          console.warn('HTML5 Audio blocked or deferred:', err);
+          playWebAudioFallback();
+        });
+      } else {
+        bgmPlaying = true;
+      }
+    } else {
+      playWebAudioFallback();
     }
   }
 
-  // Early unlock on first mobile touch or interaction anywhere
-  ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(evt => {
-    window.addEventListener(evt, unlockMobileAudioEngine, { once: true, passive: true });
-  });
+  function stopBgmPlayback() {
+    bgmPlaying = false;
+    if (bgmAudio) {
+      bgmAudio.pause();
+      bgmAudio.currentTime = 0;
+    }
+    if (webAudioSourceNode) {
+      try {
+        webAudioSourceNode.stop();
+        webAudioSourceNode = null;
+      } catch(e) {}
+    }
+  }
+
+  function setAudioMuted(muted) {
+    isAudioMuted = muted;
+    if (bgmAudio) {
+      bgmAudio.muted = muted;
+    }
+    if (webAudioGainNode) {
+      webAudioGainNode.gain.value = muted ? 0 : 1.0;
+    }
+    if (muted) {
+      if (audioIconOn) audioIconOn.classList.add('hidden');
+      if (audioIconOff) audioIconOff.classList.remove('hidden');
+    } else {
+      if (audioIconOn) audioIconOn.classList.remove('hidden');
+      if (audioIconOff) audioIconOff.classList.add('hidden');
+      if (!bgmPlaying && (isPlaying || hasOpened)) {
+        startBgmPlayback();
+      }
+    }
+  }
+
+  // Ensure loop continuously if HTML5 audio ends
+  if (bgmAudio) {
+    bgmAudio.loop = true;
+    bgmAudio.addEventListener('ended', () => {
+      bgmAudio.currentTime = 0;
+      bgmAudio.play().catch(() => {});
+    });
+  }
 
   // --- 3D Depth Floating Sky Lanterns Engine ---
   function initFloatingLanterns() {
@@ -397,31 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isPlaying || hasOpened) return;
     
     isPlaying = true;
-    unlockMobileAudioEngine();
-
-    // Start background music seamlessly in continuous loop
-    if (bgmAudio) {
-      bgmAudio.loop = true;
-      bgmAudio.muted = isAudioMuted;
-      bgmAudio.volume = 1.0;
-      const playBgm = bgmAudio.play();
-      if (playBgm !== undefined) {
-        playBgm.then(() => {
-          console.log('BGM playback started smoothly on mobile');
-        }).catch(err => {
-          console.warn('BGM play deferred or blocked on mobile:', err);
-          // Fallback: resume audio on next user touch or interaction
-          const resumeAudioOnGesture = () => {
-            if (!isAudioMuted && bgmAudio && bgmAudio.paused) {
-              bgmAudio.play().catch(e => console.warn('BGM retry error:', e));
-            }
-          };
-          ['touchstart', 'touchend', 'click', 'scroll'].forEach(evt => {
-            window.addEventListener(evt, resumeAudioOnGesture, { once: true, passive: true });
-          });
-        });
-      }
-    }
+    startBgmPlayback();
 
     // 1. Hide tap callout overlay
     tapOverlay.classList.add('fade-out');
@@ -482,10 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     video.pause();
     video.currentTime = 0;
 
-    if (bgmAudio) {
-      bgmAudio.pause();
-      bgmAudio.currentTime = 0;
-    }
+    stopBgmPlayback();
     
     staticCanvas.classList.remove('active');
     invitationOverlay.classList.remove('revealed');
@@ -538,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     doorOpeningTriggered = true;
-    unlockMobileAudioEngine();
+    initAudioContext();
     openDoorInvitation();
   }
 
@@ -619,27 +684,11 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       initAudioContext();
 
-      if (!bgmAudio) return;
-
-      if (bgmAudio.paused) {
-        // Tapping audio button when silent forces audio playback!
-        isAudioMuted = false;
-        bgmAudio.muted = false;
-        bgmAudio.volume = 1.0;
-        bgmAudio.play().then(() => {
-          if (audioIconOn) audioIconOn.classList.remove('hidden');
-          if (audioIconOff) audioIconOff.classList.add('hidden');
-        }).catch(err => console.warn('Audio button play error:', err));
+      if (!bgmPlaying || isAudioMuted) {
+        setAudioMuted(false);
+        startBgmPlayback();
       } else {
-        isAudioMuted = !isAudioMuted;
-        bgmAudio.muted = isAudioMuted;
-        if (isAudioMuted) {
-          if (audioIconOn) audioIconOn.classList.add('hidden');
-          if (audioIconOff) audioIconOff.classList.remove('hidden');
-        } else {
-          if (audioIconOn) audioIconOn.classList.remove('hidden');
-          if (audioIconOff) audioIconOff.classList.add('hidden');
-        }
+        setAudioMuted(true);
       }
       toggleYouTubeAudioMute(isAudioMuted);
     });
@@ -647,14 +696,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Persistent interaction listener: if invitation is open and audio is paused, any tap will resume it
   function tryResumeBgmOnTouch() {
-    if (!bgmAudio || isAudioMuted) return;
-    if (bgmAudio.paused && (isPlaying || hasOpened)) {
-      bgmAudio.muted = false;
-      bgmAudio.volume = 1.0;
-      bgmAudio.play().then(() => {
-        if (audioIconOn) audioIconOn.classList.remove('hidden');
-        if (audioIconOff) audioIconOff.classList.add('hidden');
-      }).catch(() => {});
+    if (isAudioMuted) return;
+    if ((isPlaying || hasOpened) && !bgmPlaying) {
+      initAudioContext();
+      startBgmPlayback();
     }
   }
 
