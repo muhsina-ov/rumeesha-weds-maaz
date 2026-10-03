@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const audioIconOn = document.getElementById('audioIconOn');
   const audioIconOff = document.getElementById('audioIconOff');
   const replayBtn = document.getElementById('replayBtn');
+  const bgmAudio = document.getElementById('bgmAudio');
   
   // Modals
   const doorModal = document.getElementById('doorModal');
@@ -363,6 +364,17 @@ document.addEventListener('DOMContentLoaded', () => {
     isPlaying = true;
     initAudioContext();
 
+    // Start background music seamlessly
+    if (bgmAudio) {
+      bgmAudio.muted = isAudioMuted;
+      const playBgm = bgmAudio.play();
+      if (playBgm !== undefined) {
+        playBgm.catch(err => {
+          console.warn('BGM play deferred or blocked:', err);
+        });
+      }
+    }
+
     // 1. Hide tap callout overlay
     tapOverlay.classList.add('fade-out');
     
@@ -420,6 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     video.pause();
     video.currentTime = 0;
+
+    if (bgmAudio) {
+      bgmAudio.pause();
+      bgmAudio.currentTime = 0;
+    }
     
     staticCanvas.classList.remove('active');
     invitationOverlay.classList.remove('revealed');
@@ -478,11 +495,59 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // --- YouTube Background Music Player Engine ---
+  let ytPlayerIframe = null;
+
+  function extractYouTubeId(url) {
+    if (!url) return '';
+    url = url.trim();
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2] && match[2].length === 11) {
+      return match[2];
+    }
+    if (url.length === 11) return url;
+    return '';
+  }
+
+  function playYouTubeBackgroundMusic(url, autoPlay = true) {
+    const videoId = extractYouTubeId(url);
+    if (!videoId) return;
+    const container = document.getElementById('youtubePlayerContainer');
+    if (!container) return;
+
+    const mute = isAudioMuted ? 1 : 0;
+    const playParam = autoPlay ? 1 : 0;
+    container.innerHTML = `<iframe id="ytIframe" width="200" height="200" 
+      src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=${playParam}&loop=1&playlist=${videoId}&controls=0&mute=${mute}" 
+      frameborder="0" allow="autoplay"></iframe>`;
+
+    ytPlayerIframe = document.getElementById('ytIframe');
+  }
+
+  function toggleYouTubeAudioMute(isMuted) {
+    if (!ytPlayerIframe || !ytPlayerIframe.contentWindow) return;
+    const command = isMuted ? 'mute' : 'unMute';
+    try {
+      ytPlayerIframe.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: command,
+        args: []
+      }), '*');
+    } catch (e) {
+      console.warn('YouTube audio command postMessage exception:', e);
+    }
+  }
+
   // --- Audio Mute Toggle ---
   if (audioToggleBtn) {
     audioToggleBtn.addEventListener('click', () => {
       isAudioMuted = !isAudioMuted;
       video.muted = isAudioMuted;
+      if (bgmAudio) {
+        bgmAudio.muted = isAudioMuted;
+      }
+      toggleYouTubeAudioMute(isAudioMuted);
 
       if (isAudioMuted) {
         if (audioIconOn) audioIconOn.classList.add('hidden');
@@ -491,6 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioIconOn) audioIconOn.classList.remove('hidden');
         if (audioIconOff) audioIconOff.classList.add('hidden');
         initAudioContext();
+        if (bgmAudio && bgmAudio.paused && (isPlaying || hasOpened)) {
+          bgmAudio.play().catch(e => console.log('Audio resume error:', e));
+        }
       }
     });
   }

@@ -1,11 +1,14 @@
 // InviteStory Service Worker - Instant Asset Caching Engine
-const CACHE_NAME = 'invitestory-v1';
+const CACHE_NAME = 'invitestory-v2';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/main.js',
+  '/assets/bgm.mp3',
+  '/assets/doors/3.avif',
+  '/assets/doors/3.mp4',
   '/assets/doors/1.avif',
   '/assets/doors/1.webp',
   '/assets/doors/1.mp4'

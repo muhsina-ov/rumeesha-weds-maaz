@@ -41,12 +41,16 @@
   <!-- Critical Asset Preloading for Instant Render -->
   <link rel="preload" href="./assets/doors/3.avif" as="image" type="image/avif" fetchpriority="high">
   <link rel="preload" href="./assets/doors/3.mp4" as="video" type="video/mp4">
+  <link rel="preload" href="./assets/bgm.mp3" as="audio" type="audio/mpeg">
 
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <!-- Ambient Desktop Background -->
   <div class="ambient-backdrop" id="ambientBackdrop"></div>
+
+  <!-- Background Music Audio Player -->
+  <audio id="bgmAudio" src="./assets/bgm.mp3" preload="auto" loop playsinline></audio>
 
   <!-- Background YouTube Music Player Container -->
   <div id="youtubePlayerContainer" class="youtube-player-container"></div>
