@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ROYAL CINEMATIC DIGITAL WEDDING INVITATION - RUMESHA & MAAZ
+   CINEMATIC DIGITAL WEDDING INVITATION - RUMESHA & MAAZ
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
